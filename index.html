@@ -249,9 +249,7 @@
       text-decoration: underline;
     }
 
-    /* ==================================================
-       ★ 新演出：画面ブルブル（シェイク）
-    ================================================== */
+    /* 不正解時の画面ブルブル（シェイク） */
     .shake-animation {
       animation: shake 0.45s cubic-bezier(.36,.07,.19,.97) both;
     }
@@ -263,26 +261,34 @@
     }
 
     /* ==================================================
-       ★ 新演出：降ってくるキラキラ（紙吹雪風アニメーション）
+       ★ 新演出：下からフワァ〜ッと舞い上がるアニメーション
     ================================================== */
-    .falling-item {
+    .rising-item {
       position: fixed;
-      top: -40px;
+      bottom: -30px;
       z-index: 9999;
       pointer-events: none;
       user-select: none;
-      animation: fallDown linear forwards;
+      opacity: 0;
+      animation: riseUp ease-out forwards;
     }
-    @keyframes fallDown {
+    @keyframes riseUp {
       0% {
-        transform: translateY(0) rotate(0deg) scale(0.6);
-        opacity: 1;
+        transform: translateY(0) translateX(0) scale(0.4) rotate(0deg);
+        opacity: 0;
       }
-      80% {
+      15% {
+        opacity: 0.95;
+      }
+      50% {
+        transform: translateY(-50vh) translateX(var(--drift, 20px)) scale(1.1) rotate(180deg);
         opacity: 0.9;
       }
+      85% {
+        opacity: 0.7;
+      }
       100% {
-        transform: translateY(105vh) rotate(360deg) scale(1.2);
+        transform: translateY(-110vh) translateX(calc(var(--drift, 20px) * -1)) scale(1.3) rotate(360deg);
         opacity: 0;
       }
     }
@@ -561,24 +567,28 @@ function getEntries(side) {
 }
 
 /* ==================================================
-   ★ 正解時に上から降ってくるエフェクト
+   ★ 正解時に「下からフワァ〜ッ」と舞い上がるエフェクト
 ================================================== */
-function spawnFallingMagic() {
-  const symbols = ["✨", "⭐", "🎀", "🏰", "🎈", "💛", "🪙"];
-  const totalItems = 28;
+function spawnRisingMagic() {
+  const symbols = ["✨", "⭐", "🎈", "🎀", "💖", "💛", "🪙", "🏰"];
+  const totalItems = 30;
 
   for (let i = 0; i < totalItems; i++) {
     const item = document.createElement("div");
-    item.className = "falling-item";
+    item.className = "rising-item";
     item.textContent = symbols[Math.floor(Math.random() * symbols.length)];
     
     // 画面の横幅全体にランダム配置
-    item.style.left = (Math.random() * 95) + "vw";
+    item.style.left = (Math.random() * 92 + 4) + "vw";
     
-    // 大きさと落下の速さをバラバラにする
-    const size = Math.random() * 16 + 20; // 20px〜36px
-    const duration = Math.random() * 1.5 + 1.2; // 1.2s〜2.7s
-    const delay = Math.random() * 0.4; // 0s〜0.4s遅れて落ちてくる
+    // フワフワと左右に漂う揺れ幅を設定
+    const driftX = (Math.random() * 80 - 40) + "px";
+    item.style.setProperty("--drift", driftX);
+
+    // 大きさとフワァと昇る速度
+    const size = Math.random() * 18 + 20; // 20px〜38px
+    const duration = Math.random() * 1.6 + 2.0; // 2.0s〜3.6s（ゆっくり浮上）
+    const delay = Math.random() * 0.5; // 0s〜0.5s時間差でポコポコ湧き上がる
 
     item.style.fontSize = size + "px";
     item.style.animationDuration = duration + "s";
@@ -586,7 +596,7 @@ function spawnFallingMagic() {
 
     document.body.appendChild(item);
 
-    // 落下完了後に自動削除
+    // アニメーション完了後に自動で消去
     setTimeout(() => {
       item.remove();
     }, (duration + delay) * 1000);
@@ -599,8 +609,7 @@ function spawnFallingMagic() {
 function triggerShake() {
   const container = document.getElementById("mainContainer");
   container.classList.remove("shake-animation");
-  // リフローを起こして再度アニメーションを実行可能にする
-  void container.offsetWidth;
+  void container.offsetWidth; // リフロー
   container.classList.add("shake-animation");
 
   setTimeout(() => {
@@ -629,8 +638,8 @@ function checkAnswer() {
   res.style.display = "block";
 
   if (isOk) {
-    // ★ 正解時：上からキラキラやリボンを降らせる
-    spawnFallingMagic();
+    // ★ 正解時：下からフワァ〜ッと舞い上がる！
+    spawnRisingMagic();
 
     res.className = "result-box correct";
     res.innerHTML = `<strong>⭐ 大正解！</strong><br>${q.explanation}`;
@@ -640,7 +649,7 @@ function checkAnswer() {
       answeredSet.add(currentIndex);
     }
   } else {
-    // ★ 不正解時：画面全体をブルブル震わせる
+    // ★ 不正解時：画面全体がブルブル揺れる
     triggerShake();
 
     res.className = "result-box wrong";
@@ -679,7 +688,7 @@ function showClearScreen() {
   revArea.innerHTML = "";
 
   if (wrongList.length === 0) {
-    spawnFallingMagic();
+    spawnRisingMagic();
     badgeArea.innerHTML = `<div class="badge-complete">🏆 パーク完全攻略！</div>`;
     scoreText.innerHTML = `全問正解です！おめでとうございます！ (${total}/${total})`;
   } else {
