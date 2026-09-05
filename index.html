@@ -55,6 +55,10 @@
       font-size: 0.72rem;
       font-weight: 900;
     }
+    .status-badge.review {
+      background: var(--yellow);
+      color: var(--black);
+    }
     .park-progress {
       margin-bottom: 16px;
       padding: 10px 14px;
@@ -137,6 +141,10 @@
       cursor: pointer;
       font-weight: bold;
     }
+    .credit .btn-add {
+      border-color: var(--pink);
+      color: #9f1239;
+    }
     .btn-submit {
       width: 100%;
       padding: 14px;
@@ -191,9 +199,46 @@
     }
     .btn-review { background: var(--yellow); color: var(--black); }
     .btn-restart { background: #475569; color: white; }
+
+    /* JSON読み込み窓 */
+    details {
+      margin-top: 20px;
+      border-top: 2px dashed #d9bd83;
+      padding-top: 14px;
+    }
+    summary {
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-weight: bold;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin-top: 10px;
+      padding: 10px;
+      border: 2px solid #dfc99c;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-family: monospace;
+      resize: vertical;
+      outline: none;
+    }
+    .load-btn {
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px;
+      background: var(--yellow);
+      color: var(--black);
+      border: 2px solid var(--black);
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 3px 0 var(--black);
+    }
     .reset-link {
       display: block;
-      margin-top: 20px;
+      margin-top: 18px;
       text-align: center;
       font-size: 0.75rem;
       color: var(--muted);
@@ -270,67 +315,74 @@
     <button type="button" class="btn-restart" onclick="startFreshQuiz()">最初からもう一度あそぶ 🎠</button>
   </div>
 
+  <!-- 問題追加の窓 -->
+  <details>
+    <summary>🎟️ 新しいアトラクション問題データを読み込む (JSON)</summary>
+    <textarea id="json-input" placeholder="AIが作成した問題データ（[ ... ]）をここに貼り付けます"></textarea>
+    <button type="button" class="load-btn" onclick="loadCustomData()">🗝️ 新しい問題をパークに追加</button>
+  </details>
+
   <span class="reset-link" onclick="forceReset()">※ 画面がおかしいときはここを押してデータを初期化</span>
 </div>
 
 <script>
 const defaultData = [
   {
-    "story": "魔法のパークを開くため、代表者が自分のお金 500,000円を元入れした（出資した）。",
+    "story": "魔法のパークを開くため、代表者が自分のお金 500,000円を元入れした（出資した）。（資本金）",
     "debit": [{ "account": "現金", "amount": 500000 }],
     "credit": [{ "account": "資本金", "amount": 500000 }],
     "explanation": "現金（Cash: 資産）の増加は借方、資本金（Capital: 純資産）の増加は貸方に記入します。"
   },
   {
-    "story": "パーク内店舗の家賃（支払家賃）70,000円を現金で支払った。",
+    "story": "パーク内店舗の家賃（支払家賃）70,000円を現金で支払った。（支払家賃）",
     "debit": [{ "account": "支払家賃", "amount": 70000 }],
     "credit": [{ "account": "現金", "amount": 70000 }],
     "explanation": "支払家賃（費用: Expense）の発生は借方、現金（資産: Asset）の減少は貸方に記入します。"
   },
   {
-    "story": "パークのアトラクション管理用サーバー（備品）200,000円を購入し、普通預金から支払った。",
+    "story": "パークのアトラクション管理用サーバー（備品）200,000円を購入し、普通預金から支払った。（備品）",
     "debit": [{ "account": "備品", "amount": 200000 }],
     "credit": [{ "account": "普通預金", "amount": 200000 }],
     "explanation": "備品（資産）の増加は借方、普通預金（資産）の減少は貸方に記入します。"
   },
   {
-    "story": "ショップで販売する限定グッズ（商品）90,000円分を掛けで仕入れた。",
+    "story": "ショップで販売する限定グッズ（商品）90,000円分を掛けで仕入れた。（仕入）（買掛金）",
     "debit": [{ "account": "仕入", "amount": 90000 }],
     "credit": [{ "account": "買掛金", "amount": 90000 }],
     "explanation": "仕入（費用）の発生は借方、買掛金（負債: Liability）の増加は貸方に記入します。"
   },
   {
-    "story": "ツアー客へグッズ 140,000円を掛けで販売した。",
+    "story": "ツアー客へグッズ 140,000円を掛けで販売した。（売掛金）（売上）",
     "debit": [{ "account": "売掛金", "amount": 140000 }],
     "credit": [{ "account": "売上", "amount": 140000 }],
     "explanation": "売掛金（資産）の増加は借方、売上（収益: Revenue）の発生は貸方に記入します。"
   },
   {
-    "story": "先月販売したグッズ代金の売掛金 60,000円が当座預金口座へ振り込まれた。",
+    "story": "先月販売したグッズ代金の売掛金 60,000円が当座預金口座へ振り込まれた。（当座預金）（売掛金）",
     "debit": [{ "account": "当座預金", "amount": 60000 }],
     "credit": [{ "account": "売掛金", "amount": 60000 }],
     "explanation": "当座預金（資産）の増加は借方、売掛金（資産）の減少は貸方に記入します。"
   },
   {
-    "story": "仕入先への買掛金 50,000円を支払うため、小切手を振り出した（当座預金勘定を用いること）。",
+    "story": "仕入先への買掛金 50,000円を支払うため、小切手を振り出した（当座預金勘定を用いること）。（買掛金）（当座預金）",
     "debit": [{ "account": "買掛金", "amount": 50000 }],
     "credit": [{ "account": "当座預金", "amount": 50000 }],
     "explanation": "買掛金（負債）の減少は借方、当座預金（資産）の減少は貸方に記入します。"
   },
   {
-    "story": "パレード運行を手伝い、お礼（受取手数料）として現金 30,000円を受け取った。",
+    "story": "パレード運行を手伝い、お礼（受取手数料）として現金 30,000円を受け取った。（受取手数料）",
     "debit": [{ "account": "現金", "amount": 30000 }],
     "credit": [{ "account": "受取手数料", "amount": 30000 }],
     "explanation": "現金（資産）の増加は借方、受取手数料（収益）の発生は貸方に記入します。"
   },
   {
-    "story": "手持ちの現金 120,000円を安全のため普通預金口座へ預け入れた。",
+    "story": "手持ちの現金 120,000円を安全のため普通預金口座へ預け入れた。（普通預金）（現金）",
     "debit": [{ "account": "普通預金", "amount": 120000 }],
     "credit": [{ "account": "現金", "amount": 120000 }],
     "explanation": "普通預金（資産）の増加は借方、現金（資産）の減少は貸方に記入します。"
   },
   {
-    "story": "オンラインシステムの手数料として、現金 10,000円を支払った（支払手数料勘定を用いること）。",
+    "story": "オンラインシステムの手数料として、現金 10,000円を支払った（支払手数料勘定を用いること）。（支払手数料）",
     "debit": [{ "account": "支払手数料", "amount": 10000 }],
     "credit": [{ "account": "現金", "amount": 10000 }],
     "explanation": "支払手数料（費用）の発生は借方、現金（資産）の減少は貸方に記入します。"
@@ -350,9 +402,7 @@ function init() {
     const saved = localStorage.getItem("magic_park_boki_data");
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        baseQuestions = parsed;
-      }
+      if (Array.isArray(parsed) && parsed.length > 0) baseQuestions = parsed;
     }
   } catch (e) {
     baseQuestions = defaultData;
@@ -374,7 +424,6 @@ function init() {
     currentIndex = 0;
   }
 
-  // 安全ガード：インデックスが不正・問題数超えの場合は必ず0問目から起動
   if (!currentQuestions || currentQuestions.length === 0 || currentIndex >= currentQuestions.length || currentIndex < 0) {
     currentIndex = 0;
     currentQuestions = [...baseQuestions];
@@ -422,6 +471,15 @@ function loadQuestion(index) {
     localStorage.setItem("magic_park_wrong_list", JSON.stringify(wrongList));
     localStorage.setItem("magic_park_is_review", isReviewMode);
   } catch(e) {}
+
+  const tag = document.getElementById("status-tag");
+  if (isReviewMode) {
+    tag.textContent = "🔄 復習中";
+    tag.className = "status-badge review";
+  } else {
+    tag.textContent = "🎡 探索中";
+    tag.className = "status-badge";
+  }
 
   const prefix = isReviewMode ? "🔄 復習" : "🎠 アトラクション";
   document.getElementById("q-number").textContent = `${prefix} // ${index + 1} / ${currentQuestions.length}`;
@@ -554,6 +612,39 @@ function startFreshQuiz() {
 function forceReset() {
   localStorage.clear();
   location.reload();
+}
+
+function loadCustomData() {
+  const input = document.getElementById("json-input").value.trim();
+  if (!input) {
+    alert("JSONデータを貼り付けてください。");
+    return;
+  }
+  try {
+    const data = JSON.parse(input);
+    if (!Array.isArray(data) || data.length === 0) throw new Error();
+
+    baseQuestions = data;
+    localStorage.setItem("magic_park_boki_data", JSON.stringify(data));
+    localStorage.removeItem("magic_park_current_idx");
+    localStorage.removeItem("magic_park_correct_cnt");
+    localStorage.removeItem("magic_park_wrong_list");
+    localStorage.removeItem("magic_park_is_review");
+
+    currentQuestions = [...baseQuestions];
+    currentIndex = 0;
+    correctCount = 0;
+    wrongList = [];
+    isReviewMode = false;
+    answeredSet.clear();
+
+    document.getElementById("quiz-area").style.display = "block";
+    document.getElementById("clear-area").style.display = "none";
+    loadQuestion(0);
+    alert(`新しいストーリー（全${baseQuestions.length}問）を読み込みました！`);
+  } catch (e) {
+    alert("⚠️ JSONデータの形式を確認してください。正しく貼り付けられているかチェックをお願いします。");
+  }
 }
 
 window.addEventListener("DOMContentLoaded", init);
